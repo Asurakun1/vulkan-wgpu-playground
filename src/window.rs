@@ -1,13 +1,13 @@
+use crate::surface::State;
 use winit::{
-    event::*,
+    event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
 
-use crate::surface::State;
-
 pub async fn run() {
     env_logger::init();
+
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_title("Hello World")
@@ -18,49 +18,44 @@ pub async fn run() {
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent {
-            ref event,
             window_id,
-        } if window_id == state.window.id() => {
-            if !state.input(event) {
-                match event {
-                    WindowEvent::CloseRequested
-                    | WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                state: ElementState::Pressed,
-                                virtual_keycode: Some(VirtualKeyCode::Escape),
-                                ..
-                            },
+            ref event,
+        } if window_id == state.window.id() => match event {
+            WindowEvent::CloseRequested
+            | WindowEvent::KeyboardInput {
+                input:
+                    KeyboardInput {
+                        state: ElementState::Pressed,
+                        virtual_keycode: Some(VirtualKeyCode::Escape),
                         ..
-                    } => *control_flow = ControlFlow::Exit,
+                    },
+                ..
+            } => *control_flow = ControlFlow::Exit,
 
-                    WindowEvent::Resized(physical_size) => {
-                        state.resize(*physical_size);
-                    }
-
-                    WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                        state.resize(**new_inner_size);
-                    }
-
-                    _ => {}
-                }
+            WindowEvent::Resized(physiscal_size) => {
+                state.resize(*physiscal_size);
             }
-        }
+            WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+                state.resize(**new_inner_size);
+            }
 
-        Event::RedrawRequested(window_id) if window_id == state.window().id() => {
+            _ => (),
+        },
+
+        Event::RedrawRequested(window_id) if window_id == state.window.id() => {
             state.update();
 
             match state.render() {
                 Ok(_) => {}
+
                 Err(wgpu::SurfaceError::Lost) => state.resize(state.size),
                 Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
-                Err(e) => eprintln!("{:?}", e),
+                Err(e) => println!("{:?}", e),
             }
         }
 
-        Event::MainEventsCleared => {
-            state.window().request_redraw();
-        }
-        _ => {}
+        Event::MainEventsCleared => state.window().request_redraw(),
+
+        _ => (),
     });
 }
