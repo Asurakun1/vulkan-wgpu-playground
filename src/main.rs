@@ -1,9 +1,11 @@
-mod window;
 mod surface;
-use pollster;
+mod window;
+mod vertex_buffer;
+
+
+use pollster::block_on;
 use window::run;
-fn main(){
 
-    pollster::block_on(run());
-
+fn main() {
+    block_on(run());
 }

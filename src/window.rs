@@ -1,20 +1,19 @@
-use crate::surface::State;
 use winit::{
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
 
-pub async fn run() {
-    env_logger::init();
+use crate::surface::State;
 
+pub async fn run() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_title("Hello World")
         .build(&event_loop)
         .unwrap();
 
-    let mut state = State::new(window).await;
+    let mut state = State::run(window).await;
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent {
@@ -32,14 +31,13 @@ pub async fn run() {
                 ..
             } => *control_flow = ControlFlow::Exit,
 
-            WindowEvent::Resized(physiscal_size) => {
-                state.resize(*physiscal_size);
+            WindowEvent::Resized(physical_size) => {
+                state.resize(*physical_size);
             }
             WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
                 state.resize(**new_inner_size);
             }
-
-            _ => (),
+            _ => {}
         },
 
         Event::RedrawRequested(window_id) if window_id == state.window.id() => {
@@ -47,15 +45,16 @@ pub async fn run() {
 
             match state.render() {
                 Ok(_) => {}
-
                 Err(wgpu::SurfaceError::Lost) => state.resize(state.size),
                 Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
                 Err(e) => println!("{:?}", e),
             }
         }
 
-        Event::MainEventsCleared => state.window().request_redraw(),
+        Event::MainEventsCleared => {
+            state.window().request_redraw();
+        }
 
-        _ => (),
+        _ => {}
     });
 }
