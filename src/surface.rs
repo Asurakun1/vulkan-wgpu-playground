@@ -1,7 +1,6 @@
-use crate::vertex_buffer::{Vertex, VERTICIES};
+use crate::vertex_buffer;
 use wgpu::util::DeviceExt;
 use winit::{event::WindowEvent, window::Window};
-
 pub struct State {
     surface: wgpu::Surface,
     device: wgpu::Device,
@@ -9,15 +8,14 @@ pub struct State {
     config: wgpu::SurfaceConfiguration,
     pub size: winit::dpi::PhysicalSize<u32>,
     pub window: Window,
-    render_pipeline: wgpu::RenderPipeline,
+    pub render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     num_verticies: u32,
 }
 
 impl State {
-    pub async fn run(window: Window) -> Self {
+    pub async fn new(window: Window) -> Self {
         let size = window.inner_size();
-        let num_verticies = VERTICIES.len() as u32;
 
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::VULKAN,
@@ -25,7 +23,6 @@ impl State {
         });
 
         let surface = unsafe { instance.create_surface(&window) }.unwrap();
-
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptionsBase {
                 power_preference: wgpu::PowerPreference::default(),
@@ -76,18 +73,18 @@ impl State {
 
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("render pipeline layout"),
+                label: Some("pipeline layout"),
                 bind_group_layouts: &[],
                 push_constant_ranges: &[],
             });
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Render Pipeline"),
+            label: Some("render pipeline"),
             layout: Some(&render_pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[Vertex::desc()],
+                buffers: &[vertex_buffer::Vertex::desc()],
             },
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
@@ -108,8 +105,8 @@ impl State {
                 module: &shader,
                 entry_point: "fs_main",
                 targets: &[Some(wgpu::ColorTargetState {
-                    format: config.format,
-                    blend: Some(wgpu::BlendState::REPLACE),
+                    format,
+                    blend: None,
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
@@ -118,9 +115,11 @@ impl State {
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("vertex buffer"),
-            contents: bytemuck::cast_slice(VERTICIES),
+            contents: bytemuck::cast_slice(vertex_buffer::VERTICIES),
             usage: wgpu::BufferUsages::VERTEX,
         });
+
+        let num_verticies = vertex_buffer::VERTICIES.len() as u32;
 
         Self {
             surface,
@@ -135,7 +134,7 @@ impl State {
         }
     }
 
-    pub fn window(&self) -> &Window {
+    pub fn window(&mut self) -> &Window {
         &self.window
     }
 
@@ -148,17 +147,19 @@ impl State {
         }
     }
 
-    pub fn input(&mut self, event: &WindowEvent) -> bool {
+    pub fn update(&mut self) {}
+
+    pub fn input(&mut self, event: WindowEvent) -> bool {
         false
     }
 
-    pub fn update(&mut self) {}
-
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture().unwrap();
-        let view = output
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
+
+        let view = output.texture.create_view(&wgpu::TextureViewDescriptor {
+            label: Some("Texture view"),
+            ..Default::default()
+        });
 
         let mut encoder = self
             .device
@@ -167,14 +168,14 @@ impl State {
             });
 
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("Render Pass"),
+            label: Some("render pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &view,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: 0.2,
-                        g: 0.1,
+                        r: 0.5,
+                        g: 0.4,
                         b: 0.5,
                         a: 1.0,
                     }),
@@ -185,14 +186,14 @@ impl State {
         });
 
         render_pass.set_pipeline(&self.render_pipeline);
-
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-
         render_pass.draw(0..self.num_verticies, 0..1);
 
         drop(render_pass);
+
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
+
         Ok(())
     }
 }

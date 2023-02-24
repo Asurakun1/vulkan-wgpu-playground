@@ -9,13 +9,13 @@ use crate::surface::State;
 pub async fn run() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
-        .with_title("Hello World")
+        .with_title("Hello Triangle")
         .build(&event_loop)
         .unwrap();
 
-    let mut state = State::run(window).await;
+    let mut state = State::new(window).await;
 
-    event_loop.run(move |event, _, control_flow| match event {
+    event_loop.run(move |event, _, contr_flow| match event {
         Event::WindowEvent {
             window_id,
             ref event,
@@ -29,30 +29,32 @@ pub async fn run() {
                         ..
                     },
                 ..
-            } => *control_flow = ControlFlow::Exit,
+            } => *contr_flow = ControlFlow::Exit,
 
             WindowEvent::Resized(physical_size) => {
                 state.resize(*physical_size);
             }
+
             WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
                 state.resize(**new_inner_size);
             }
+
             _ => {}
         },
 
-        Event::RedrawRequested(window_id) if window_id == state.window.id() => {
+        Event::RedrawRequested(..) => {
             state.update();
 
             match state.render() {
                 Ok(_) => {}
                 Err(wgpu::SurfaceError::Lost) => state.resize(state.size),
-                Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
-                Err(e) => println!("{:?}", e),
+                Err(wgpu::SurfaceError::OutOfMemory) => *contr_flow = ControlFlow::Exit,
+                Err(e) => eprintln!("{:?}", e),
             }
         }
 
         Event::MainEventsCleared => {
-            state.window().request_redraw();
+            state.window.request_redraw();
         }
 
         _ => {}
