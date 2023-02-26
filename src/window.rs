@@ -19,28 +19,32 @@ pub async fn run() {
         Event::WindowEvent {
             window_id,
             ref event,
-        } if window_id == state.window.id() => match event {
-            WindowEvent::CloseRequested
-            | WindowEvent::KeyboardInput {
-                input:
-                    KeyboardInput {
-                        state: ElementState::Pressed,
-                        virtual_keycode: Some(VirtualKeyCode::Escape),
+        } if window_id == state.window.id() => {
+            if !state.input(event) {
+                match event {
+                    WindowEvent::CloseRequested
+                    | WindowEvent::KeyboardInput {
+                        input:
+                            KeyboardInput {
+                                state: ElementState::Pressed,
+                                virtual_keycode: Some(VirtualKeyCode::Escape),
+                                ..
+                            },
                         ..
-                    },
-                ..
-            } => *control_flow = ControlFlow::Exit,
+                    } => *control_flow = ControlFlow::Exit,
 
-            WindowEvent::Resized(physical_size) => {
-                state.resize(*physical_size);
+                    WindowEvent::Resized(physical_size) => {
+                        state.resize(*physical_size);
+                    }
+
+                    WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+                        state.resize(**new_inner_size);
+                    }
+
+                    _ => {}
+                }
             }
-
-            WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                state.resize(**new_inner_size);
-            }
-
-            _ => {}
-        },
+        }
 
         Event::RedrawRequested(window_id) if window_id == state.window.id() => {
             state.update();
