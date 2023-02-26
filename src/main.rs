@@ -1,9 +1,11 @@
-mod window;
 mod surface;
+mod window;
 mod vertex_buffer;
+mod texture;
+mod camera;
 
-use window::run;
 use pollster::block_on;
-fn main(){
+use window::run;
+fn main() {
     block_on(run());
 }

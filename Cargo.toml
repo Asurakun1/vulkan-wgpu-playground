@@ -13,3 +13,10 @@ log = "*"
 wgpu = "*"
 pollster = "*"
 bytemuck = { version = "1.12", features = [ "derive" ] }
+anyhow = "*"
+cgmath = "0.18"
+
+[dependencies.image]
+version = "*"
+default-features = true
+features = ["png", "jpeg"]

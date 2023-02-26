@@ -9,7 +9,7 @@ use crate::surface::State;
 pub async fn run() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
-        .with_title("Hello World")
+        .with_title("Hello Triangle")
         .build(&event_loop)
         .unwrap();
 
@@ -56,6 +56,7 @@ pub async fn run() {
         Event::MainEventsCleared => {
             state.window.request_redraw();
         }
+
         _ => {}
     });
 }
