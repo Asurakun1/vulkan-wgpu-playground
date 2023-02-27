@@ -5,6 +5,8 @@ mod texture;
 mod camera;
 mod camera_controller;
 mod instance;
+mod model;
+mod resources;
 
 use pollster::block_on;
 use window::run;
