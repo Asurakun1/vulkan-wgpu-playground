@@ -4,12 +4,12 @@ use winit::{
     window::WindowBuilder,
 };
 
-use crate::surface::State;
+use crate::swapchain::State;
 
 pub async fn run() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
-        .with_title("Hello Triangle")
+        .with_title("Hello Triangle 17")
         .build(&event_loop)
         .unwrap();
 
@@ -20,7 +20,7 @@ pub async fn run() {
             window_id,
             ref event,
         } if window_id == state.window.id() => {
-            if !state.input(event) {
+            if !state.input() {
                 match event {
                     WindowEvent::CloseRequested
                     | WindowEvent::KeyboardInput {
@@ -46,7 +46,7 @@ pub async fn run() {
             }
         }
 
-        Event::RedrawRequested(window_id) if window_id == state.window.id() => {
+        Event::RedrawRequested(windiow_id) if windiow_id == state.window.id() => {
             state.update();
 
             match state.render() {
@@ -60,7 +60,6 @@ pub async fn run() {
         Event::MainEventsCleared => {
             state.window.request_redraw();
         }
-
         _ => {}
     });
 }

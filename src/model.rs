@@ -1,86 +1,100 @@
-use std::{mem, ops::Range};
-use crate::texture;
-pub trait Vertex {
-    fn desc<'a>() -> wgpu::VertexBufferLayout<'a>;
-}
+use crate::texture::Texture;
+use wgpu::util::DeviceExt;
 
-#[repr(C)]
-#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct ModelVertex {
-    pub position: [f32; 3],
-    pub tex_coords: [f32; 2],
-    pub normal: [f32; 3],
-}
+use crate::vertex_buffer::Vertex;
 
-impl Vertex for ModelVertex {
-    fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
-        wgpu::VertexBufferLayout {
-            array_stride: mem::size_of::<ModelVertex>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &[
-                wgpu::VertexAttribute {
-                    offset: 0,
-                    shader_location: 0,
-                    format: wgpu::VertexFormat::Float32x3,
-                },
-                wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
-                    shader_location: 1,
-                    format: wgpu::VertexFormat::Float32x2,
-                },
-                wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 5]>() as wgpu::BufferAddress,
-                    shader_location: 2,
-                    format: wgpu::VertexFormat::Float32x3,
-                },
-            ],
-        }
-    }
-}
-
-pub struct Material {
-    pub name: String,
-    pub diffuse_texture: texture::Texture,
-    pub bind_group: wgpu::BindGroup
-}
-
-pub struct Mesh{
-    pub name: String,
+pub struct Model {
     pub vertex_buffer: wgpu::Buffer,
     pub index_buffer: wgpu::Buffer,
-    pub num_elements: u32,
-    pub material: usize
+    pub diffuse_bind_group: wgpu::BindGroup,
+    pub texture_bind_group_layout: wgpu::BindGroupLayout,
+    pub num_indices: u32,
 }
 
-pub struct Model{
-    pub meshes: Vec<Mesh>,
-    pub materials: Vec<Material>
-}
+impl Model {
+    #[rustfmt::skip]
+    pub const VERTICES: &[Vertex] = &[
+        Vertex { position: [0.0, 0.5, 0.0], tex_coords: [1.0, 0.5] }, //A
+        Vertex { position: [-0.5, -0.5, 0.0], tex_coords: [0.0, 0.0] }, //B
+        Vertex { position: [0.5, -0.5, 0.0], tex_coords: [0.0, 1.0] }, //C
+    ];
 
-// model.rs
-pub trait DrawModel<'a> {
-    fn draw_mesh(&mut self, mesh: &'a Mesh);
-    fn draw_mesh_instanced(
-        &mut self,
-        mesh: &'a Mesh,
-        instances: Range<u32>,
-    );
-}
-impl<'a, 'b> DrawModel<'b> for wgpu::RenderPass<'a>
-where
-    'b: 'a,
-{
-    fn draw_mesh(&mut self, mesh: &'b Mesh) {
-        self.draw_mesh_instanced(mesh, 0..1);
+    #[rustfmt::skip]
+    pub const INDICES: &[u16] = &[
+        0, 1, 2
+        ];
+
+    pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("vertex buffer"),
+            contents: bytemuck::cast_slice(Model::VERTICES),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("index buffer"),
+            contents: bytemuck::cast_slice(Model::INDICES),
+            usage: wgpu::BufferUsages::INDEX,
+        });
+
+        let num_indices = Model::INDICES.len() as u32;
+
+        let (diffuse_bind_group, texture_bind_group_layout) =
+            Self::diffuse_bind_group(device, queue);
+
+        Self {
+            vertex_buffer,
+            index_buffer,
+            num_indices,
+            diffuse_bind_group,
+            texture_bind_group_layout,
+        }
     }
 
-    fn draw_mesh_instanced(
-        &mut self,
-        mesh: &'b Mesh,
-        instances: Range<u32>,
-    ){
-        self.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-        self.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-        self.draw_indexed(0..mesh.num_elements, 0, instances);
+    fn diffuse_bind_group(
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+    ) -> (wgpu::BindGroup, wgpu::BindGroupLayout) {
+        let diffuse_bytes = include_bytes!("../res/Asura.png");
+        let diffuse_texture = Texture::from_bytes(device, queue, diffuse_bytes, "Asura").unwrap();
+
+        let texture_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("texture bind group layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+            });
+
+        let diffuse_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("diffuse texture bind group"),
+            layout: &texture_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&diffuse_texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
+                },
+            ],
+        });
+
+        (diffuse_bind_group, texture_bind_group_layout)
     }
 }
