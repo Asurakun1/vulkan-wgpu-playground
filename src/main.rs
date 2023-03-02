@@ -5,6 +5,6 @@ mod model;
 mod texture;
 use window::run;
 use pollster::block_on;
-fn main() {
+fn main(){
     block_on(run())
 }
