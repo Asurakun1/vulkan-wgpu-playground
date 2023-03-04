@@ -1,4 +1,3 @@
-use wgpu::SurfaceConfiguration;
 use winit::window::Window;
 
 use crate::{model::Model, vertex_buffer::Vertex};
@@ -17,7 +16,6 @@ pub struct State {
 impl State {
     pub async fn new(window: Window) -> Self {
         let size = window.inner_size();
-
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::VULKAN,
             dx12_shader_compiler: wgpu::Dx12Compiler::default(),
@@ -27,7 +25,7 @@ impl State {
 
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptionsBase {
-                power_preference: wgpu::PowerPreference::LowPower,
+                power_preference: wgpu::PowerPreference::default(),
                 force_fallback_adapter: false,
                 compatible_surface: Some(&surface),
             })
@@ -47,6 +45,7 @@ impl State {
             .unwrap();
 
         let surface_caps = surface.get_capabilities(&adapter);
+
         let format = surface_caps
             .formats
             .iter()
@@ -55,7 +54,7 @@ impl State {
             .next()
             .unwrap_or(surface_caps.formats[0]);
 
-        let config = SurfaceConfiguration {
+        let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format,
             width: size.width,
@@ -67,17 +66,17 @@ impl State {
 
         surface.configure(&device, &config);
 
-        let model = Model::new(&device, &queue);
-
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
         });
 
+        let model = Model::new(&device);
+
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("render pipeline layout"),
-                bind_group_layouts: &[&model.texture.texture_bind_group_layout],
+                bind_group_layouts: &[],
                 push_constant_ranges: &[],
             });
 
@@ -93,7 +92,7 @@ impl State {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
-                cull_mode: None, //Some(wgpu::Face::Back),
+                cull_mode: Some(wgpu::Face::Back),
                 unclipped_depth: false,
                 polygon_mode: wgpu::PolygonMode::Fill,
                 conservative: false,
@@ -130,17 +129,17 @@ impl State {
 
     pub fn update(&mut self) {}
 
-    pub fn input(&mut self) -> bool {
-        false
-    }
-
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
-        if new_size.width > 0 && new_size.height > 0 {
+        if new_size.height > 0 && new_size.width > 0 {
             self.size = new_size;
             self.config.width = new_size.width;
             self.config.height = new_size.height;
             self.surface.configure(&self.device, &self.config);
         }
+    }
+
+    pub fn input(&mut self) -> bool {
+        false
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
@@ -163,9 +162,9 @@ impl State {
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: 0.1,
-                        g: 0.1,
-                        b: 0.3,
+                        r: 0.2,
+                        g: 0.4,
+                        b: 0.5,
                         a: 1.0,
                     }),
                     store: true,
@@ -175,10 +174,9 @@ impl State {
         });
 
         render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_bind_group(0, &self.model.texture.texture_bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.model.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.model.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-        render_pass.draw_indexed(0..self.model.num_indices, 0, 0..1);
+        render_pass.draw_indexed(0..self.model.num_size, 0, 0..1);
 
         drop(render_pass);
 

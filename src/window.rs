@@ -8,8 +8,9 @@ use crate::swapchain::State;
 
 pub async fn run() {
     let event_loop = EventLoop::new();
+
     let window = WindowBuilder::new()
-        .with_title("Hello world 19")
+        .with_title("hello triangle 21")
         .build(&event_loop)
         .unwrap();
 
@@ -40,13 +41,12 @@ pub async fn run() {
                     WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
                         state.resize(**new_inner_size);
                     }
-
                     _ => {}
                 }
             }
         }
 
-        Event::RedrawRequested(winow_id) if winow_id == state.window.id() => {
+        Event::RedrawRequested(window_id) if window_id == state.window.id() => {
             state.update();
 
             match state.render() {
@@ -60,7 +60,6 @@ pub async fn run() {
         Event::MainEventsCleared => {
             state.window.request_redraw();
         }
-
         _ => {}
     });
 }

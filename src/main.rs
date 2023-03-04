@@ -1,11 +1,10 @@
-mod window;
+mod model;
 mod swapchain;
 mod vertex_buffer;
-mod model;
+mod window;
 mod texture;
-
-use window::run;
 use pollster::block_on;
-fn main(){
-    block_on(run())
+use window::run;
+fn main() {
+    block_on(run());
 }
