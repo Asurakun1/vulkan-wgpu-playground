@@ -17,13 +17,12 @@ impl Model {
         });
 
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("index buffer"),
+            label: Some("index_buffer"),
             contents: bytemuck::cast_slice(Self::INDICES),
             usage: wgpu::BufferUsages::INDEX,
         });
 
         let num_size = Self::INDICES.len() as u32;
-
         Self {
             vertex_buffer,
             num_size,
@@ -46,9 +45,5 @@ impl Model {
         },
     ];
 
-    #[rustfmt::skip]
-    const INDICES: &[u16] = &[
-        0, 1, 2
-
-    ];
+    const INDICES: &[u16] = &[0, 1, 2];
 }

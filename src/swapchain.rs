@@ -1,3 +1,4 @@
+use wgpu::SurfaceConfiguration;
 use winit::window::Window;
 
 use crate::{model::Model, vertex_buffer::Vertex};
@@ -16,16 +17,16 @@ pub struct State {
 impl State {
     pub async fn new(window: Window) -> Self {
         let size = window.inner_size();
+
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::VULKAN,
             dx12_shader_compiler: wgpu::Dx12Compiler::default(),
         });
 
         let surface = unsafe { instance.create_surface(&window) }.unwrap();
-
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptionsBase {
-                power_preference: wgpu::PowerPreference::default(),
+                power_preference: wgpu::PowerPreference::LowPower,
                 force_fallback_adapter: false,
                 compatible_surface: Some(&surface),
             })
@@ -45,7 +46,6 @@ impl State {
             .unwrap();
 
         let surface_caps = surface.get_capabilities(&adapter);
-
         let format = surface_caps
             .formats
             .iter()
@@ -54,7 +54,7 @@ impl State {
             .next()
             .unwrap_or(surface_caps.formats[0]);
 
-        let config = wgpu::SurfaceConfiguration {
+        let config = SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format,
             width: size.width,
@@ -128,24 +128,21 @@ impl State {
     }
 
     pub fn update(&mut self) {}
-
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
-        if new_size.height > 0 && new_size.width > 0 {
+        if new_size.width > 0 && new_size.height > 0 {
             self.size = new_size;
             self.config.width = new_size.width;
             self.config.height = new_size.height;
             self.surface.configure(&self.device, &self.config);
         }
     }
-
     pub fn input(&mut self) -> bool {
         false
     }
-
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor {
-            label: Some("texture view"),
+            label: Some("render view"),
             ..Default::default()
         });
 
@@ -162,9 +159,9 @@ impl State {
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: 0.2,
-                        g: 0.4,
-                        b: 0.5,
+                        r: 0.5,
+                        g: 0.2,
+                        b: 0.7,
                         a: 1.0,
                     }),
                     store: true,
@@ -182,7 +179,6 @@ impl State {
 
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
-
         Ok(())
     }
 }
