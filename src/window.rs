@@ -9,7 +9,7 @@ use crate::swapchain::State;
 pub async fn run() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
-        .with_title("Hello triangle 22")
+        .with_title("Hello triangle 23")
         .build(&event_loop)
         .unwrap();
 
@@ -20,7 +20,7 @@ pub async fn run() {
             window_id,
             ref event,
         } if window_id == state.window.id() => {
-            if !state.input() {
+            if !state.input(event) {
                 match event {
                     WindowEvent::CloseRequested
                     | WindowEvent::KeyboardInput {
@@ -33,8 +33,8 @@ pub async fn run() {
                         ..
                     } => *control_flow = ControlFlow::Exit,
 
-                    WindowEvent::Resized(physical_size) => {
-                        state.resize(*physical_size);
+                    WindowEvent::Resized(phys_size) => {
+                        state.resize(*phys_size);
                     }
 
                     WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
@@ -59,7 +59,6 @@ pub async fn run() {
         Event::MainEventsCleared => {
             state.window.request_redraw();
         }
-
         _ => {}
     });
 }
