@@ -1,15 +1,17 @@
 use winit::{
+    dpi::PhysicalSize,
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
 
-use crate::swapchain::State;
+use crate::component::swapchain::State;
 
 pub async fn run() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
-        .with_title("Hello triangle 23")
+        .with_title("Hello triangle 24")
+        .with_inner_size(PhysicalSize::new(800, 600))
         .build(&event_loop)
         .unwrap();
 
@@ -20,7 +22,7 @@ pub async fn run() {
             window_id,
             ref event,
         } if window_id == state.window.id() => {
-            if !state.input(event) {
+            if !state.input() {
                 match event {
                     WindowEvent::CloseRequested
                     | WindowEvent::KeyboardInput {
@@ -48,6 +50,7 @@ pub async fn run() {
 
         Event::RedrawRequested(window_id) if window_id == state.window.id() => {
             state.update();
+
             match state.render() {
                 Ok(_) => {}
                 Err(wgpu::SurfaceError::Lost) => state.resize(state.size),
@@ -59,6 +62,7 @@ pub async fn run() {
         Event::MainEventsCleared => {
             state.window.request_redraw();
         }
+
         _ => {}
     });
 }
