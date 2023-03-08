@@ -1,6 +1,7 @@
+use wgpu::SurfaceConfiguration;
 use winit::window::Window;
 
-use crate::triangle;
+use super::{camera, triangle};
 
 pub struct State {
     surface: wgpu::Surface,
@@ -11,6 +12,7 @@ pub struct State {
     pub window: Window,
     render_pipeline: wgpu::RenderPipeline,
     triangle: triangle::Triangle,
+    camera: camera::CameraState,
 }
 
 impl State {
@@ -45,14 +47,16 @@ impl State {
             .unwrap();
 
         let surface_caps = surface.get_capabilities(&adapter);
+
         let format = surface_caps
             .formats
-            .into_iter()
+            .iter()
+            .copied()
             .filter(|f| f.describe().srgb)
             .next()
-            .unwrap();
+            .unwrap_or(surface_caps.formats[0]);
 
-        let config = wgpu::SurfaceConfiguration {
+        let config = SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format,
             width: size.width,
@@ -69,9 +73,11 @@ impl State {
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
         });
 
+        let camera = camera::CameraState::new(&config, &device);
+
         let texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("bind group layout texture"),
+                label: Some("Texture bind group layout"),
                 entries: &[
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
@@ -92,14 +98,14 @@ impl State {
                 ],
             });
 
-        let triangle = triangle::Triangle::new(&device, &queue, &texture_bind_group_layout);
-
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("render pipeline layout"),
-                bind_group_layouts: &[&texture_bind_group_layout],
+                bind_group_layouts: &[&texture_bind_group_layout, &camera.camera_bind_group_layout],
                 push_constant_ranges: &[],
             });
+
+        let triangle = triangle::Triangle::new(&device, &queue, &texture_bind_group_layout);
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("render pipeline"),
@@ -137,21 +143,26 @@ impl State {
         });
 
         Self {
-            queue,
             surface,
             device,
+            queue,
             config,
             size,
             window,
             render_pipeline,
             triangle,
+            camera,
         }
     }
 
     pub fn update(&mut self) {}
 
+    pub fn input(&mut self) -> bool {
+        false
+    }
+
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
-        if new_size.width > 0 && new_size.height > 0 {
+        if new_size.height > 0 && new_size.width > 0 {
             self.size = new_size;
             self.config.width = new_size.width;
             self.config.height = new_size.height;
@@ -159,14 +170,10 @@ impl State {
         }
     }
 
-    pub fn input(&mut self) -> bool {
-        false
-    }
-
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor {
-            label: Some("Render view"),
+            label: Some("render view"),
             ..Default::default()
         });
 
@@ -183,8 +190,8 @@ impl State {
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: 0.4,
-                        g: 0.2,
+                        r: 0.3,
+                        g: 0.4,
                         b: 0.5,
                         a: 1.0,
                     }),
@@ -196,6 +203,7 @@ impl State {
 
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.triangle.bind_group, &[]);
+        render_pass.set_bind_group(1, &self.camera.camera_bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.triangle.vertex_buffer.slice(..));
         render_pass.set_index_buffer(
             self.triangle.index_buffer.slice(..),
@@ -203,6 +211,7 @@ impl State {
         );
 
         render_pass.draw_indexed(0..self.triangle.num_size, 0, 0..1);
+
         drop(render_pass);
 
         self.queue.submit(std::iter::once(encoder.finish()));

@@ -1,17 +1,15 @@
 use winit::{
-    dpi::PhysicalSize,
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
 
-use crate::component::swapchain::State;
+use super::swapchain::State;
 
 pub async fn run() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
-        .with_title("Hello triangle 24")
-        .with_inner_size(PhysicalSize::new(800, 600))
+        .with_title("Hello Triangle 26")
         .build(&event_loop)
         .unwrap();
 
@@ -42,7 +40,6 @@ pub async fn run() {
                     WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
                         state.resize(**new_inner_size);
                     }
-
                     _ => {}
                 }
             }
@@ -62,7 +59,6 @@ pub async fn run() {
         Event::MainEventsCleared => {
             state.window.request_redraw();
         }
-
         _ => {}
     });
 }

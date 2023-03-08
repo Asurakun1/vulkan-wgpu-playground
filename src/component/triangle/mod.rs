@@ -1,6 +1,6 @@
-use wgpu::util::DeviceExt;
+use wgpu::{util::DeviceExt, BufferUsages};
 
-use crate::Texture::Texture;
+use super::texture;
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -16,14 +16,14 @@ impl Vertex {
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &[
                 wgpu::VertexAttribute {
-                    format: wgpu::VertexFormat::Float32x3,
                     offset: 0,
                     shader_location: 0,
+                    format: wgpu::VertexFormat::Float32x3,
                 },
                 wgpu::VertexAttribute {
-                    format: wgpu::VertexFormat::Float32x2,
                     offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
                     shader_location: 1,
+                    format: wgpu::VertexFormat::Float32x2,
                 },
             ],
         }
@@ -38,26 +38,30 @@ pub struct Triangle {
 }
 
 impl Triangle {
-    pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, layout: &wgpu::BindGroupLayout) -> Self {
-        let texture = Texture::from_bytes("res/harold-01.jpg", device, queue);
-
+    pub fn new(
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        texture_bind_group_layout: &wgpu::BindGroupLayout,
+    ) -> Self {
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("triangle vertex buffer"),
+            label: Some("vertex_buffer"),
             contents: bytemuck::cast_slice(Self::VERTICES),
-            usage: wgpu::BufferUsages::VERTEX,
+            usage: BufferUsages::VERTEX,
         });
 
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("triangle index buffer"),
+            label: Some("index_buffer"),
             contents: bytemuck::cast_slice(Self::INDICES),
-            usage: wgpu::BufferUsages::INDEX,
+            usage: BufferUsages::INDEX,
         });
 
         let num_size = Self::INDICES.len() as u32;
 
+        let texture = texture::Texture::bytes("res/harold-01.jpg", device, queue);
+
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("triangle bind group"),
-            layout,
+            layout: texture_bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -80,31 +84,18 @@ impl Triangle {
 
     const VERTICES: &[Vertex] = &[
         Vertex {
-            position: [-0.4, 0.49240386, 0.0],
-            tex_coords: [0.5, 1.0 - 0.99240386],
-        }, // A
+            position: [0.0, 0.5, 0.0],
+            tex_coords: [1.0, 0.0],
+        },
         Vertex {
-            position: [-0.49513406, 0.06958647, 0.0],
-            tex_coords: [0.3, 1.0 - 0.56958647],
-        }, // B
+            position: [-0.5, -0.5, 0.0],
+            tex_coords: [0.0, 1.0],
+        },
         Vertex {
-            position: [-0.21918549, -0.44939706, 0.0],
-            tex_coords: [0.4, 1.0 - 0.05060294],
-        }, // C
-        Vertex {
-            position: [0.35966998, -0.3473291, 0.0],
-            tex_coords: [0.85967, 1.0 - 0.1526709],
-        }, // D
-        Vertex {
-            position: [0.44147372, 0.2347359, 0.0],
-            tex_coords: [0.9414737, 1.0 - 0.7347359],
-        }, // E
+            position: [0.5, -0.5, 0.0],
+            tex_coords: [0.0, 0.0],
+        },
     ];
 
-    #[rustfmt::skip]
-    const INDICES: &[u32] = &[
-        0, 1, 4,
-        1, 2, 4,
-        2, 3, 4,
-    ];
+    const INDICES: &[u32] = &[0, 1, 2];
 }
