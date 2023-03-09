@@ -17,13 +17,13 @@ impl Vertex {
             attributes: &[
                 wgpu::VertexAttribute {
                     offset: 0,
-                    shader_location: 0,
                     format: wgpu::VertexFormat::Float32x3,
+                    shader_location: 0,
                 },
                 wgpu::VertexAttribute {
                     offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
-                    shader_location: 1,
                     format: wgpu::VertexFormat::Float32x2,
+                    shader_location: 1,
                 },
             ],
         }
@@ -33,22 +33,17 @@ impl Vertex {
 pub struct Triangle {
     pub vertex_buffer: wgpu::Buffer,
     pub index_buffer: wgpu::Buffer,
-    pub num_size: u32,
     pub bind_group: wgpu::BindGroup,
+    pub num_size: u32,
 }
 
 impl Triangle {
-    pub fn new(
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        texture_bind_group_layout: &wgpu::BindGroupLayout,
-    ) -> Self {
+    pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, layout: &wgpu::BindGroupLayout) -> Self {
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("vertex_buffer"),
             contents: bytemuck::cast_slice(Self::VERTICES),
             usage: BufferUsages::VERTEX,
         });
-
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("index_buffer"),
             contents: bytemuck::cast_slice(Self::INDICES),
@@ -57,11 +52,11 @@ impl Triangle {
 
         let num_size = Self::INDICES.len() as u32;
 
-        let texture = texture::Texture::bytes("res/harold-01.jpg", device, queue);
+        let texture = texture::Texture::from_bytes("res/Asura.png", device, queue);
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("triangle bind group"),
-            layout: texture_bind_group_layout,
+            label: Some("triangle texture bind group"),
+            layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,

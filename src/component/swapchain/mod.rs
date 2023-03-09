@@ -1,4 +1,4 @@
-use wgpu::SurfaceConfiguration;
+use wgpu::{SurfaceConfiguration, SurfaceError};
 use winit::window::Window;
 
 use super::{camera, triangle};
@@ -7,12 +7,12 @@ pub struct State {
     surface: wgpu::Surface,
     device: wgpu::Device,
     queue: wgpu::Queue,
-    config: wgpu::SurfaceConfiguration,
+    config: SurfaceConfiguration,
     pub size: winit::dpi::PhysicalSize<u32>,
     pub window: Window,
     render_pipeline: wgpu::RenderPipeline,
     triangle: triangle::Triangle,
-    camera: camera::CameraState,
+    camera_state: camera::CameraState,
 }
 
 impl State {
@@ -47,7 +47,6 @@ impl State {
             .unwrap();
 
         let surface_caps = surface.get_capabilities(&adapter);
-
         let format = surface_caps
             .formats
             .iter()
@@ -73,11 +72,9 @@ impl State {
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
         });
 
-        let camera = camera::CameraState::new(&config, &device);
-
         let texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Texture bind group layout"),
+                label: Some("texture bind group layout"),
                 entries: &[
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
@@ -98,10 +95,15 @@ impl State {
                 ],
             });
 
+        let camera_state = camera::CameraState::new(&config, &device);
+
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("render pipeline layout"),
-                bind_group_layouts: &[&texture_bind_group_layout, &camera.camera_bind_group_layout],
+                bind_group_layouts: &[
+                    &texture_bind_group_layout,
+                    &camera_state.camera_bind_group_layout,
+                ],
                 push_constant_ranges: &[],
             });
 
@@ -119,7 +121,7 @@ impl State {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
-                cull_mode: Some(wgpu::Face::Back),
+                cull_mode: None, //Some(wgpu::Face::Back),
                 unclipped_depth: false,
                 polygon_mode: wgpu::PolygonMode::Fill,
                 conservative: false,
@@ -141,7 +143,6 @@ impl State {
             }),
             multiview: None,
         });
-
         Self {
             surface,
             device,
@@ -151,26 +152,37 @@ impl State {
             window,
             render_pipeline,
             triangle,
-            camera,
+            camera_state,
         }
     }
 
-    pub fn update(&mut self) {}
-
-    pub fn input(&mut self) -> bool {
-        false
+    pub fn input(&mut self, event: &winit::event::WindowEvent) -> bool {
+        self.camera_state.camera_controller.process_events(event)
     }
-
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         if new_size.height > 0 && new_size.width > 0 {
             self.size = new_size;
-            self.config.width = new_size.width;
             self.config.height = new_size.height;
+            self.config.width = new_size.width;
             self.surface.configure(&self.device, &self.config);
         }
     }
+    pub fn update(&mut self) {
+        self.camera_state
+            .camera_controller
+            .update_camera(&mut self.camera_state.camera);
 
-    pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+        self.camera_state
+            .camera_uniform
+            .update_view_proj(&mut self.camera_state.camera);
+
+        self.queue.write_buffer(
+            &self.camera_state.camera_buffer,
+            0,
+            bytemuck::cast_slice(&[self.camera_state.camera_uniform]),
+        );
+    }
+    pub fn render(&mut self) -> Result<(), SurfaceError> {
         let output = self.surface.get_current_texture()?;
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor {
             label: Some("render view"),
@@ -190,9 +202,9 @@ impl State {
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: 0.3,
+                        r: 0.5,
                         g: 0.4,
-                        b: 0.5,
+                        b: 0.6,
                         a: 1.0,
                     }),
                     store: true,
@@ -203,7 +215,7 @@ impl State {
 
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.triangle.bind_group, &[]);
-        render_pass.set_bind_group(1, &self.camera.camera_bind_group, &[]);
+        render_pass.set_bind_group(1, &self.camera_state.camera_bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.triangle.vertex_buffer.slice(..));
         render_pass.set_index_buffer(
             self.triangle.index_buffer.slice(..),

@@ -1,6 +1,6 @@
 use cgmath::SquareMatrix;
-use wgpu::{util::DeviceExt, BufferUsages, SurfaceConfiguration, BindGroupLayout};
-
+use wgpu::{util::DeviceExt, BufferUsages, SurfaceConfiguration};
+mod camera_controller;
 pub struct Camera {
     eye: cgmath::Point3<f32>,
     target: cgmath::Point3<f32>,
@@ -12,9 +12,8 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn build_view_proj_matrix(&self) -> cgmath::Matrix4<f32> {
+    fn build_view_proj_matrix(&self) -> cgmath::Matrix4<f32> {
         let view = cgmath::Matrix4::look_at_rh(self.eye, self.target, self.up);
-
         let proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
 
         Self::OPENGL_TO_WGPU_MATRIX * proj * view
@@ -32,28 +31,30 @@ impl Camera {
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-struct CameraUniform {
+pub struct CameraUniform {
     view_proj: [[f32; 4]; 4],
 }
 
 impl CameraUniform {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             view_proj: cgmath::Matrix4::identity().into(),
         }
     }
 
-    fn update_view_proj(&mut self, camera: &Camera) {
+    pub fn update_view_proj(&mut self, camera: &Camera) {
         self.view_proj = camera.build_view_proj_matrix().into();
     }
 }
 
 pub struct CameraState {
-    camera: Camera,
-    pub camera_bind_group_layout: BindGroupLayout,
+    pub camera: Camera,
+    pub camera_bind_group_layout: wgpu::BindGroupLayout,
     pub camera_bind_group: wgpu::BindGroup,
+    pub camera_controller: camera_controller::CameraController,
+    pub camera_uniform: CameraUniform,
+    pub camera_buffer: wgpu::Buffer,
 }
-
 impl CameraState {
     pub fn new(config: &SurfaceConfiguration, device: &wgpu::Device) -> Self {
         let camera = Camera {
@@ -61,7 +62,7 @@ impl CameraState {
             target: (0.0, 0.0, 0.0).into(),
             up: cgmath::Vector3::unit_y(),
             aspect: config.width as f32 / config.height as f32,
-            fovy: 50.0,
+            fovy: 90.0,
             znear: 0.1,
             zfar: 100.0,
         };
@@ -76,20 +77,19 @@ impl CameraState {
         });
 
         let camera_bind_group_layout =
-        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            }],
-            label: Some("camera_bind_group_layout"),
-        });
-
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("camera bind group layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+            });
 
         let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("camera bind group"),
@@ -100,10 +100,15 @@ impl CameraState {
             }],
         });
 
+        let camera_controller = camera_controller::CameraController::new(0.1);
+
         Self {
             camera,
             camera_bind_group,
-            camera_bind_group_layout
+            camera_controller,
+            camera_uniform,
+            camera_buffer,
+            camera_bind_group_layout,
         }
     }
 }

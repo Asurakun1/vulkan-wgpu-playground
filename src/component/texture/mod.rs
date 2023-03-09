@@ -9,7 +9,7 @@ pub struct Texture {
 }
 
 impl Texture {
-    pub fn bytes(file: &str, device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
+    pub fn from_bytes(file: &str, device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
         let path = std::fs::read(file).unwrap();
         let image = image::load_from_memory(path.as_bytes()).unwrap();
         let rgba = image.to_rgba8();
@@ -24,13 +24,29 @@ impl Texture {
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("texture"),
             size,
-            mip_level_count: 1,
             sample_count: 1,
+            mip_level_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::Rgba8UnormSrgb,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
         });
+
+        queue.write_texture(
+            wgpu::ImageCopyTextureBase {
+                texture: &texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            &rgba,
+            wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: NonZeroU32::new(4 * dimensions.0),
+                rows_per_image: (NonZeroU32::new(dimensions.1)),
+            },
+            size,
+        );
 
         let view = texture.create_view(&wgpu::TextureViewDescriptor {
             label: Some("texture view"),
@@ -47,22 +63,6 @@ impl Texture {
             mipmap_filter: wgpu::FilterMode::Nearest,
             ..Default::default()
         });
-
-        queue.write_texture(
-            wgpu::ImageCopyTextureBase {
-                texture: &texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            &rgba,
-            wgpu::ImageDataLayout {
-                offset: 0,
-                bytes_per_row: NonZeroU32::new(4 * dimensions.0),
-                rows_per_image: NonZeroU32::new(dimensions.1),
-            },
-            size,
-        );
 
         Self {
             texture,
