@@ -1,25 +1,17 @@
-use wgpu::{SurfaceConfiguration, SurfaceError};
+use wgpu::{SurfaceConfiguration, SurfaceError, TextureUsages};
 use winit::window::Window;
 
-use super::{
-    camera,
-    instance::{self, InstanceState},
-    model::{self, Vertex},
-    texture, triangle,
-};
+use super::triangle;
 
 pub struct State {
     surface: wgpu::Surface,
     device: wgpu::Device,
     queue: wgpu::Queue,
-    config: SurfaceConfiguration,
+    config: wgpu::SurfaceConfiguration,
     pub size: winit::dpi::PhysicalSize<u32>,
     pub window: Window,
     render_pipeline: wgpu::RenderPipeline,
     triangle: triangle::Triangle,
-    camera_state: camera::CameraState,
-    instance_state: InstanceState,
-    depth_texture: texture::Texture,
 }
 
 impl State {
@@ -63,7 +55,7 @@ impl State {
             .unwrap_or(surface_caps.formats[0]);
 
         let config = SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            usage: TextureUsages::RENDER_ATTACHMENT,
             format,
             width: size.width,
             height: size.height,
@@ -79,45 +71,14 @@ impl State {
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
         });
 
-        let texture_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("texture bind group layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            multisampled: false,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                        count: None,
-                    },
-                ],
-            });
-
-        let camera_state = camera::CameraState::new(&config, &device);
-
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("render pipeline layout"),
-                bind_group_layouts: &[
-                    &texture_bind_group_layout,
-                    &camera_state.camera_bind_group_layout,
-                ],
+                bind_group_layouts: &[],
                 push_constant_ranges: &[],
             });
 
-        let depth_texture =
-            texture::Texture::create_depth_texture(&device, &config, "depth texture");
-        let triangle = triangle::Triangle::new(&device, &queue, &texture_bind_group_layout);
-        let instance_state = InstanceState::new(&device);
+        let triangle = triangle::Triangle::new(&device, &queue);
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("render pipeline"),
@@ -125,24 +86,18 @@ impl State {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[model::ModelVertex::desc(), instance::InstanceRaw::desc()],
+                buffers: &[triangle::Vertex::desc()],
             },
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
-                cull_mode: None, //Some(wgpu::Face::Back),
+                cull_mode: Some(wgpu::Face::Back),
                 unclipped_depth: false,
                 polygon_mode: wgpu::PolygonMode::Fill,
                 conservative: false,
             },
-            depth_stencil: Some(wgpu::DepthStencilState {
-                format: texture::Texture::DEPTH_FORMAT,
-                depth_write_enabled: true,
-                depth_compare: wgpu::CompareFunction::Less,
-                stencil: wgpu::StencilState::default(),
-                bias: wgpu::DepthBiasState::default(),
-            }),
+            depth_stencil: None,
             multisample: wgpu::MultisampleState {
                 count: 1,
                 mask: !0,
@@ -159,6 +114,7 @@ impl State {
             }),
             multiview: None,
         });
+
         Self {
             surface,
             device,
@@ -168,42 +124,21 @@ impl State {
             window,
             render_pipeline,
             triangle,
-            camera_state,
-            instance_state,
-            depth_texture,
         }
     }
 
-    pub fn input(&mut self, event: &winit::event::WindowEvent) -> bool {
-        self.camera_state.camera_controller.process_events(event)
-    }
+    pub fn update(&mut self) {}
+
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         if new_size.height > 0 && new_size.width > 0 {
             self.size = new_size;
             self.config.height = new_size.height;
             self.config.width = new_size.width;
             self.surface.configure(&self.device, &self.config);
-            self.depth_texture = texture::Texture::create_depth_texture(
-                &self.device,
-                &self.config,
-                "resized depth texture",
-            );
         }
     }
-    pub fn update(&mut self) {
-        self.camera_state
-            .camera_controller
-            .update_camera(&mut self.camera_state.camera);
-
-        self.camera_state
-            .camera_uniform
-            .update_view_proj(&mut self.camera_state.camera);
-
-        self.queue.write_buffer(
-            &self.camera_state.camera_buffer,
-            0,
-            bytemuck::cast_slice(&[self.camera_state.camera_uniform]),
-        );
+    pub fn input(&mut self) -> bool {
+        false
     }
     pub fn render(&mut self) -> Result<(), SurfaceError> {
         let output = self.surface.get_current_texture()?;
@@ -225,40 +160,24 @@ impl State {
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: 0.5,
-                        g: 0.4,
-                        b: 0.6,
+                        r: 0.0,
+                        g: 0.0,
+                        b: 0.0,
                         a: 1.0,
                     }),
                     store: true,
                 },
             })],
-            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                view: &self.depth_texture.view,
-                depth_ops: Some(wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(1.0),
-                    store: true,
-                }),
-                stencil_ops: None,
-            }),
+            depth_stencil_attachment: None,
         });
 
         render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_bind_group(0, &self.triangle.bind_group, &[]);
-        render_pass.set_bind_group(1, &self.camera_state.camera_bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.triangle.vertex_buffer.slice(..));
-        render_pass.set_vertex_buffer(1, self.instance_state.instance_buffer.slice(..));
         render_pass.set_index_buffer(
             self.triangle.index_buffer.slice(..),
             wgpu::IndexFormat::Uint32,
         );
-
-        render_pass.draw_indexed(
-            0..self.triangle.num_size,
-            0,
-            0..self.instance_state.instances.len() as u32,
-        );
-
+        render_pass.draw_indexed(0..self.triangle.num_size, 0, 0..1);
         drop(render_pass);
 
         self.queue.submit(std::iter::once(encoder.finish()));
