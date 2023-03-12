@@ -1,7 +1,13 @@
-use wgpu::{SurfaceConfiguration, SurfaceError, TextureUsages};
+use wgpu::SurfaceError;
 use winit::{event::WindowEvent, window::Window};
 
-use super::{camera, texture, triangle};
+use super::{
+    camera::camera_state,
+    instance::{instance_raw::InstanceRaw, InstanceState},
+    texture,
+    triangle::{self, draw_triangle::DrawTriangle},
+};
+mod bind_group_layouts;
 
 pub struct State {
     surface: wgpu::Surface,
@@ -13,7 +19,8 @@ pub struct State {
     render_pipeline: wgpu::RenderPipeline,
     triangle: triangle::Triangle,
     depth_texture: texture::Texture,
-    camera_state: camera::CameraState,
+    camera_state: camera_state::CameraState,
+    instances: InstanceState,
 }
 
 impl State {
@@ -56,8 +63,8 @@ impl State {
             .next()
             .unwrap_or(surface_caps.formats[0]);
 
-        let config = SurfaceConfiguration {
-            usage: TextureUsages::RENDER_ATTACHMENT,
+        let config = wgpu::SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format,
             width: size.width,
             height: size.height,
@@ -73,43 +80,26 @@ impl State {
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
         });
 
-        let texture_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("texture bind group layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            multisampled: false,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                        count: None,
-                    },
-                ],
-            });
-
-        let camera_state = camera::CameraState::new(&config, &device);
+        let bind_group_layouts = bind_group_layouts::BindGroupLayouts::new(&device);
 
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("render pipeline layout"),
-                bind_group_layouts: &[
-                    &texture_bind_group_layout,
-                    &camera_state.camera_bind_group_layout,
-                ],
+                bind_group_layouts: &[&bind_group_layouts.texture, &bind_group_layouts.camera],
                 push_constant_ranges: &[],
             });
 
-        let triangle = triangle::Triangle::new(&device, &queue, &texture_bind_group_layout);
+        /*
+        Components
+         */
+        let camera_state =
+            camera_state::CameraState::new(&device, &config, &bind_group_layouts.camera);
+        let triangle = triangle::Triangle::new(&device, &queue, &bind_group_layouts.texture);
         let depth_texture = texture::Texture::create_depth_texture(&device, &config);
+        let instances = InstanceState::new(&device);
+        /*
+        end of components
+         */
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("render pipeline"),
@@ -117,7 +107,7 @@ impl State {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[triangle::Vertex::desc()],
+                buffers: &[triangle::Vertex::desc(), InstanceRaw::desc()],
             },
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
@@ -163,12 +153,13 @@ impl State {
             triangle,
             depth_texture,
             camera_state,
+            instances,
         }
     }
 
     pub fn update(&mut self) {
         self.camera_state
-            .camera_controller
+            .controller
             .update_camera(&mut self.camera_state.camera);
         self.camera_state
             .camera_uniform
@@ -179,7 +170,9 @@ impl State {
             bytemuck::cast_slice(&[self.camera_state.camera_uniform]),
         );
     }
-
+    pub fn input(&mut self, event: &WindowEvent) -> bool {
+        self.camera_state.controller.process_events(event)
+    }
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         if new_size.height > 0 && new_size.width > 0 {
             self.size = new_size;
@@ -188,9 +181,6 @@ impl State {
             self.surface.configure(&self.device, &self.config);
             self.depth_texture = texture::Texture::create_depth_texture(&self.device, &self.config);
         }
-    }
-    pub fn input(&mut self, event: &WindowEvent) -> bool {
-        self.camera_state.camera_controller.process_events(event)
     }
     pub fn render(&mut self) -> Result<(), SurfaceError> {
         let output = self.surface.get_current_texture()?;
@@ -231,25 +221,13 @@ impl State {
         });
 
         render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_bind_group(1, &self.camera_state.camera_bind_group, &[]);
-        /*
-
-        model
-
-         */
-        render_pass.set_bind_group(0, &self.triangle.bind_group, &[]);
-        render_pass.set_vertex_buffer(0, self.triangle.vertex_buffer.slice(..));
-        render_pass.set_index_buffer(
-            self.triangle.index_buffer.slice(..),
-            wgpu::IndexFormat::Uint32,
+        render_pass.set_bind_group(1, &self.camera_state.bind_group, &[]);
+        render_pass.draw_instanced_triangle(
+            &self.triangle,
+            0..self.instances.instances.len() as _,
+            &self.instances,
         );
-        /*
 
-        end of scene / model
-
-         */
-
-        render_pass.draw_indexed(0..self.triangle.num_size, 0, 0..1);
         drop(render_pass);
 
         self.queue.submit(std::iter::once(encoder.finish()));

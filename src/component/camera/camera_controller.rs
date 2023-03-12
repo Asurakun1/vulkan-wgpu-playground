@@ -15,8 +15,8 @@ impl CameraController {
     pub fn new(speed: f32) -> Self {
         Self {
             speed,
-            is_forward_pressed: false,
             is_backward_pressed: false,
+            is_forward_pressed: false,
             is_left_pressed: false,
             is_right_pressed: false,
         }
@@ -40,6 +40,7 @@ impl CameraController {
                         self.is_forward_pressed = is_pressed;
                         true
                     }
+
                     VirtualKeyCode::S | VirtualKeyCode::Down => {
                         self.is_backward_pressed = is_pressed;
                         true
@@ -52,7 +53,6 @@ impl CameraController {
                         self.is_right_pressed = is_pressed;
                         true
                     }
-
                     _ => false,
                 }
             }
@@ -74,6 +74,9 @@ impl CameraController {
         }
 
         let right = forward_norm.cross(camera.up);
+
+        //reset radius in cast the forward/backward is pressed
+
         let forward = camera.target - camera.eye;
         let forward_mag = forward.magnitude();
 
