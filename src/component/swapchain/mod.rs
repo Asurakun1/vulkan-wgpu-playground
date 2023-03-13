@@ -4,8 +4,9 @@ use winit::{event::WindowEvent, window::Window};
 use super::{
     camera::camera_state,
     instance::{instance_raw::InstanceRaw, InstanceState},
+    model::{self, draw_model::DrawModel, model::Model, Vertex},
     texture,
-    triangle::{self, draw_triangle::DrawTriangle},
+    triangle::{self},
 };
 mod bind_group_layouts;
 
@@ -21,6 +22,7 @@ pub struct State {
     depth_texture: texture::Texture,
     camera_state: camera_state::CameraState,
     instances: InstanceState,
+    model: Model,
 }
 
 impl State {
@@ -95,6 +97,9 @@ impl State {
         let camera_state =
             camera_state::CameraState::new(&device, &config, &bind_group_layouts.camera);
         let triangle = triangle::Triangle::new(&device, &queue, &bind_group_layouts.texture);
+        let model = Model::load_model("Gear1.obj", &device, &queue, &bind_group_layouts.texture)
+            .await
+            .unwrap();
         let depth_texture = texture::Texture::create_depth_texture(&device, &config);
         let instances = InstanceState::new(&device);
         /*
@@ -107,7 +112,7 @@ impl State {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[triangle::Vertex::desc(), InstanceRaw::desc()],
+                buffers: &[model::ModelVertex::desc(), InstanceRaw::desc()],
             },
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
@@ -154,6 +159,7 @@ impl State {
             depth_texture,
             camera_state,
             instances,
+            model,
         }
     }
 
@@ -221,13 +227,12 @@ impl State {
         });
 
         render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_bind_group(1, &self.camera_state.bind_group, &[]);
-        render_pass.draw_instanced_triangle(
-            &self.triangle,
-            0..self.instances.instances.len() as _,
-            &self.instances,
+        render_pass.set_vertex_buffer(1, self.instances.buffer.slice(..));
+        render_pass.draw_model_instanced(
+            &self.model,
+            &self.camera_state.bind_group,
+            0..self.instances.instances.len() as u32,
         );
-
         drop(render_pass);
 
         self.queue.submit(std::iter::once(encoder.finish()));
