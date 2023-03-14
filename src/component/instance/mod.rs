@@ -32,7 +32,7 @@ impl InstanceState {
         Self::NUM_INSTANCES_PER_ROW as f32 * 0.5,
         Self::NUM_INSTANCES_PER_ROW as f32 * 0.5,
     );
-    const SPACE_BETWEEN: f32 = 15.0;
+    const SPACE_BETWEEN: f32 = 25.0;
 
     pub fn new(device: &wgpu::Device) -> Self {
         let instances = (0..Self::NUM_INSTANCES_PER_ROW)

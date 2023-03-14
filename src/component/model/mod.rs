@@ -2,6 +2,7 @@ use std::mem::size_of;
 use wgpu::VertexBufferLayout;
 pub mod draw_model;
 pub mod model;
+pub mod draw_light;
 
 pub trait Vertex {
     fn desc<'a>() -> VertexBufferLayout<'a>;
