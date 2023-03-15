@@ -13,7 +13,7 @@ pub struct LightState {
 impl LightState {
     pub fn new(device: &wgpu::Device, layout: &wgpu::BindGroupLayout) -> Self {
         let light_uniform = LightUniform {
-            position: [10.0, 0.0, 0.0],
+            position: [25.0, 4.0, 0.0],
             _padding: 0,
             color: [1.0, 1.0, 1.0],
             _padding2: 0,

@@ -31,6 +31,7 @@ pub struct State {
     instances: InstanceState,
     model: Model,
     light_state: LightState,
+    box_model: Model,
 }
 
 impl State {
@@ -99,6 +100,11 @@ impl State {
             .unwrap();
         let depth_texture = texture::Texture::create_depth_texture(&device, &config);
         let instances = InstanceState::new(&device);
+
+        let box_model =
+            Model::load_model("harold.obj", &device, &queue, &bind_group_layouts.texture)
+                .await
+                .unwrap();
         /*
         end of components
          */
@@ -167,6 +173,7 @@ impl State {
             instances,
             model,
             light_state,
+            box_model,
         }
     }
 
@@ -248,7 +255,7 @@ impl State {
         render_pass.set_vertex_buffer(1, self.instances.buffer.slice(..));
 
         render_pass.draw_light_model(
-            &self.model,
+            &self.box_model,
             &self.camera_state.bind_group,
             &self.light_state.bind_group,
         );

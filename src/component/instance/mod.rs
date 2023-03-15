@@ -16,6 +16,7 @@ impl Instance {
 
         InstanceRaw {
             model: model.into(),
+            normal: cgmath::Matrix3::from(self.rotation).into(),
         }
     }
 }
