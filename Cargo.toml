@@ -7,7 +7,6 @@ edition = "2021"
 
 [dependencies]
 cfg-if = "*"
-winit = "*"
 env_logger = "*"
 log = "*"
 wgpu = "*"
@@ -20,6 +19,8 @@ cgmath = "0.18"
 tobj = { version = "3.2.1", features = [
     "async",
 ]}
+
+render = { path = "render" }
 
 
 [dependencies.image]
