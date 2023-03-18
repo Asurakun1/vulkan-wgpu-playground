@@ -9,3 +9,9 @@ edition = "2021"
 winit = "*"
 wgpu = "*"
 bytemuck = { version = "1.12", features = [ "derive" ] }
+cgmath = "0.18"
+
+[dependencies.image]
+version = "*"
+default-features = true
+features = ["png", "jpeg"]

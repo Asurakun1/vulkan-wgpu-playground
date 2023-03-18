@@ -1,4 +1,6 @@
 pub mod window;
 mod swapchain;
-pub mod render_pipeline;
 mod triangle;
+mod texture;
+mod camera;
+mod movement;

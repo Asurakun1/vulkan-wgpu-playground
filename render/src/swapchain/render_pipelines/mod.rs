@@ -1,3 +1,5 @@
+pub mod pipeline_state;
+
 pub fn create_render_pipeline(
     device: &wgpu::Device,
     name: &str,

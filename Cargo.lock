@@ -694,7 +694,6 @@ name = "hello_wgpu"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bytemuck",
  "cfg-if",
  "cgmath",
  "env_logger",
@@ -705,7 +704,6 @@ dependencies = [
  "pollster",
  "render",
  "tobj",
- "wgpu",
 ]
 
 [[package]]
@@ -1394,6 +1392,8 @@ name = "render"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
+ "cgmath",
+ "image",
  "wgpu",
  "winit",
 ]
