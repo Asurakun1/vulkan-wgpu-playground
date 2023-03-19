@@ -1,19 +1,19 @@
 use wgpu::{util::DeviceExt, BufferUsages};
 
-use super::{controller, Camera, CameraUniform};
+use super::{controller::Controller, Camera, CameraUniform};
 
 pub struct CameraState {
     pub camera: Camera,
-    pub camera_uniform: CameraUniform,
-    pub camera_buffer: wgpu::Buffer,
+    pub uniform: CameraUniform,
+    pub buffer: wgpu::Buffer,
     pub bind_group: wgpu::BindGroup,
-    pub controller: controller::Controller,
+    pub controller: Controller,
 }
 
 impl CameraState {
     pub fn new(
-        config: &wgpu::SurfaceConfiguration,
         device: &wgpu::Device,
+        config: &wgpu::SurfaceConfiguration,
         layout: &wgpu::BindGroupLayout,
     ) -> Self {
         let camera = Camera {
@@ -26,12 +26,12 @@ impl CameraState {
             zfar: 100.0,
         };
 
-        let mut camera_uniform = CameraUniform::new();
-        camera_uniform.update_view_proj(&camera);
+        let mut uniform = CameraUniform::new();
+        uniform.update_view_proj(&camera);
 
-        let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("camera buffer"),
-            contents: bytemuck::cast_slice(&[camera_uniform]),
+            contents: bytemuck::cast_slice(&[uniform]),
             usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
         });
 
@@ -40,16 +40,16 @@ impl CameraState {
             layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: camera_buffer.as_entire_binding(),
+                resource: buffer.as_entire_binding(),
             }],
         });
 
-        let controller = controller::Controller::new(0.1);
+        let controller = Controller::new(0.1);
 
         Self {
             camera,
-            camera_buffer,
-            camera_uniform,
+            uniform,
+            buffer,
             bind_group,
             controller,
         }

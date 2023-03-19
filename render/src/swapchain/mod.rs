@@ -2,7 +2,8 @@ use std::path::PathBuf;
 use winit::{event::WindowEvent, window::Window};
 
 use crate::{
-    camera::{self, camera_state},
+    camera::camera_state::CameraState,
+    camera::update_camera::UpdateCamera,
     triangle::{self, draw_triangle::DrawTriangle},
 };
 
@@ -13,13 +14,13 @@ mod render_pipelines;
 pub struct State {
     surface: wgpu::Surface,
     device: wgpu::Device,
-    queue: wgpu::Queue,
+    pub queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     pub size: winit::dpi::PhysicalSize<u32>,
     pub window: Window,
     triangle: triangle::Triangle,
-    pipelines: PipelineState,
-    camera_state: camera_state::CameraState,
+    pub pipelines: PipelineState,
+    pub camera_state: CameraState,
 }
 
 impl State {
@@ -87,8 +88,7 @@ impl State {
         let triangle =
             triangle::Triangle::new(&device, &queue, &pipelines.bind_group_layouts.texture);
 
-        let camera_state =
-            camera_state::CameraState::new(&config, &device, &pipelines.bind_group_layouts.camera);
+        let camera_state = CameraState::new(&device, &config, &pipelines.bind_group_layouts.camera);
 
         Self {
             surface,
@@ -104,17 +104,7 @@ impl State {
     }
 
     pub fn update(&mut self) {
-        self.camera_state
-            .controller
-            .update_camera(&mut self.camera_state.camera);
-        self.camera_state
-            .camera_uniform
-            .update_view_proj(&self.camera_state.camera);
-        self.queue.write_buffer(
-            &self.camera_state.camera_buffer,
-            0,
-            bytemuck::cast_slice(&[self.camera_state.camera_uniform]),
-        );
+        self.update_camera();
     }
 
     pub fn input(&mut self, event: &WindowEvent) -> bool {

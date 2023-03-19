@@ -1,7 +1,9 @@
 use cgmath::SquareMatrix;
 
 pub mod camera_state;
-pub mod controller;
+mod controller;
+pub mod update_camera;
+
 pub struct Camera {
     eye: cgmath::Point3<f32>,
     target: cgmath::Point3<f32>,
@@ -13,13 +15,14 @@ pub struct Camera {
 }
 
 impl Camera {
-    fn build_view_proj_matrix(&self) -> cgmath::Matrix4<f32> {
+    pub fn build_view_proj_matrix(&self) -> cgmath::Matrix4<f32> {
         let view = cgmath::Matrix4::look_at_rh(self.eye, self.target, self.up);
-        let proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
+
+        let proj =
+            cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
 
         Self::OPENGL_TO_WGPU_MATRIX * proj * view
     }
-
 
     #[rustfmt::skip]
     const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
