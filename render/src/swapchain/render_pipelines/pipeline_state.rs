@@ -10,7 +10,11 @@ pub struct PipelineState {
 }
 
 impl PipelineState {
-    pub fn new(device: &wgpu::Device, format: TextureFormat) -> Self {
+    pub fn new(
+        device: &wgpu::Device,
+        format: TextureFormat,
+        depth_format: Option<wgpu::TextureFormat>,
+    ) -> Self {
         let bind_group_layouts = BindGroupLayouts::new(device);
 
         let render_pipeline_layout =
@@ -41,6 +45,7 @@ impl PipelineState {
                 Some(&render_pipeline_layout),
                 &shader,
                 &[Vertex::desc()],
+                depth_format,
             )
         };
         Self {

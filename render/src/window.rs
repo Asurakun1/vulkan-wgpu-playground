@@ -58,6 +58,7 @@ pub async fn run() {
                 Ok(_) => {}
                 Err(wgpu::SurfaceError::Lost) => state.resize(state.size),
                 Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
+                Err(wgpu::SurfaceError::Outdated) => state.resize(state.window.inner_size()),
                 Err(e) => eprint!("{:?}", e),
             }
         }

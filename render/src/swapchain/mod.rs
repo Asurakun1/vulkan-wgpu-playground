@@ -1,9 +1,10 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, time::Instant};
 use winit::{event::WindowEvent, window::Window};
 
 use crate::{
     camera::{camera_state::CameraState, update_camera::UpdateCamera},
-    movement::Movement,
+    movement::{update_movement::UpdateMovement, Movement},
+    texture::Texture,
     triangle::{self, draw_triangle::DrawTriangle},
 };
 
@@ -22,6 +23,8 @@ pub struct State {
     pub pipelines: PipelineState,
     pub movement: Movement,
     pub camera_state: CameraState,
+    pub depth_texture: Texture,
+    pub start_time: Instant,
 }
 
 impl State {
@@ -84,13 +87,16 @@ impl State {
 
         surface.configure(&device, &config);
 
-        let pipelines = PipelineState::new(&device, config.format);
+        let pipelines = PipelineState::new(&device, config.format, Some(Texture::DEPTH_FORMAT));
 
         let triangle =
             triangle::Triangle::new(&device, &queue, &pipelines.bind_group_layouts.texture);
 
         let movement = Movement::new(&device, &pipelines.bind_group_layouts.uniform);
         let camera_state = CameraState::new(&device, &config, &pipelines.bind_group_layouts.camera);
+        let depth_texture = Texture::create_depth_texture(&device, &config);
+
+        let start_time = Instant::now();
 
         Self {
             surface,
@@ -103,20 +109,14 @@ impl State {
             pipelines,
             movement,
             camera_state,
+            depth_texture,
+            start_time,
         }
     }
 
     pub fn update(&mut self) {
         self.update_camera();
-
-        self.movement
-            .uniform
-            .new_transform(&mut self.movement.transform);
-        self.queue.write_buffer(
-            &self.movement.buffer,
-            0,
-            bytemuck::cast_slice(&[self.movement.uniform]),
-        );
+        self.update_movement();
     }
 
     pub fn input(&mut self, event: &WindowEvent) -> bool {
@@ -129,6 +129,7 @@ impl State {
             self.config.height = new_size.height;
             self.config.width = new_size.width;
             self.surface.configure(&self.device, &self.config);
+            self.depth_texture = Texture::create_depth_texture(&self.device, &self.config);
         }
     }
 
@@ -160,7 +161,14 @@ impl State {
                     store: true,
                 },
             })],
-            depth_stencil_attachment: None,
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.depth_texture.view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: true,
+                }),
+                stencil_ops: None,
+            }),
         });
 
         /*

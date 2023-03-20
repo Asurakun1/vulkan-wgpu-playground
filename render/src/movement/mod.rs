@@ -1,15 +1,18 @@
-use cgmath::{Matrix4, SquareMatrix};
+use cgmath::{Angle, Matrix4, SquareMatrix};
 use wgpu::{util::DeviceExt, BufferUsages};
-
-pub struct Transform;
+pub mod update_movement;
+pub struct Transform {
+    pub rotation_angle: f32,
+}
 
 impl Transform {
     pub fn transform(&self) -> cgmath::Matrix4<f32> {
+        let rotation = cgmath::Deg(self.rotation_angle);
+
         let mut model: Matrix4<f32> = cgmath::Matrix4::identity();
-        let translation = cgmath::Vector3::new(0.0, 0.0, 0.0);
+        let translation = cgmath::Vector3::new(rotation.cos(), rotation.sin(), 0.0);
         model = model * Matrix4::from_translation(translation);
 
-        let rotation = cgmath::Deg(45.0);
         model = model * Matrix4::from_angle_x(rotation);
         model = model * Matrix4::from_angle_y(rotation);
         model = model * Matrix4::from_angle_z(rotation);
@@ -18,6 +21,10 @@ impl Transform {
         model = model * Matrix4::from_nonuniform_scale(scale.x, scale.y, scale.z);
 
         model
+    }
+
+    pub fn update_rotation(&mut self, delta_time: f32) {
+        self.rotation_angle += delta_time * 45.0;
     }
 }
 
@@ -50,7 +57,9 @@ pub struct Movement {
 
 impl Movement {
     pub fn new(device: &wgpu::Device, layout: &wgpu::BindGroupLayout) -> Self {
-        let transform = Transform;
+        let transform = Transform {
+            rotation_angle: 0.0,
+        };
         let mut uniform = MovementUniform::new();
         uniform.new_transform(&transform);
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -74,5 +83,10 @@ impl Movement {
             bind_group,
             transform,
         }
+    }
+
+    pub fn update(&mut self, delta_time: f32) {
+        self.transform.update_rotation(delta_time);
+        self.uniform.new_transform(&self.transform);
     }
 }

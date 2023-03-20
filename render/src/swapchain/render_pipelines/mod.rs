@@ -7,6 +7,7 @@ pub fn create_render_pipeline(
     layout: Option<&wgpu::PipelineLayout>,
     shader: &wgpu::ShaderModule,
     vertex_buffer_layouts: &[wgpu::VertexBufferLayout],
+    depth_format: Option<wgpu::TextureFormat>,
 ) -> wgpu::RenderPipeline {
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some(name),
@@ -25,7 +26,13 @@ pub fn create_render_pipeline(
             polygon_mode: wgpu::PolygonMode::Fill,
             conservative: false,
         },
-        depth_stencil: None,
+        depth_stencil: depth_format.map(|f| wgpu::DepthStencilState {
+            format: f,
+            depth_write_enabled: true,
+            depth_compare: wgpu::CompareFunction::Less,
+            stencil: wgpu::StencilState::default(),
+            bias: wgpu::DepthBiasState::default(),
+        }),
         multisample: wgpu::MultisampleState {
             count: 1,
             mask: !0,
