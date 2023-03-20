@@ -16,7 +16,11 @@ impl PipelineState {
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("render pipeline layout"),
-                bind_group_layouts: &[&bind_group_layouts.texture, &bind_group_layouts.camera],
+                bind_group_layouts: &[
+                    &bind_group_layouts.texture,
+                    &bind_group_layouts.camera,
+                    &bind_group_layouts.uniform,
+                ],
                 push_constant_ranges: &[],
             });
 

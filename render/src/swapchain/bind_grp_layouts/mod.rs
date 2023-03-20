@@ -1,5 +1,6 @@
 pub struct BindGroupLayouts {
     pub texture: wgpu::BindGroupLayout,
+    pub uniform: wgpu::BindGroupLayout,
     pub camera: wgpu::BindGroupLayout,
 }
 
@@ -7,6 +8,20 @@ impl BindGroupLayouts {
     pub fn new(device: &wgpu::Device) -> Self {
         let camera = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("camera bind group"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+
+        let uniform = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("uniform bind group"),
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
                 visibility: wgpu::ShaderStages::VERTEX,
@@ -41,6 +56,10 @@ impl BindGroupLayouts {
             ],
         });
 
-        Self { texture, camera }
+        Self {
+            texture,
+            uniform,
+            camera,
+        }
     }
 }

@@ -1,7 +1,7 @@
 use cgmath::SquareMatrix;
 
 pub mod camera_state;
-mod controller;
+pub mod controller;
 pub mod update_camera;
 
 pub struct Camera {
@@ -17,9 +17,7 @@ pub struct Camera {
 impl Camera {
     pub fn build_view_proj_matrix(&self) -> cgmath::Matrix4<f32> {
         let view = cgmath::Matrix4::look_at_rh(self.eye, self.target, self.up);
-
-        let proj =
-            cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
+        let proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
 
         Self::OPENGL_TO_WGPU_MATRIX * proj * view
     }
@@ -35,11 +33,11 @@ impl Camera {
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct CameraUniform {
+pub struct Uniform {
     view_proj: [[f32; 4]; 4],
 }
 
-impl CameraUniform {
+impl Uniform {
     pub fn new() -> Self {
         Self {
             view_proj: cgmath::Matrix4::identity().into(),

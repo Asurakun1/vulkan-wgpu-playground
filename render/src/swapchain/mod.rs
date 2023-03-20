@@ -2,8 +2,8 @@ use std::path::PathBuf;
 use winit::{event::WindowEvent, window::Window};
 
 use crate::{
-    camera::camera_state::CameraState,
-    camera::update_camera::UpdateCamera,
+    camera::{camera_state::CameraState, update_camera::UpdateCamera},
+    movement::Movement,
     triangle::{self, draw_triangle::DrawTriangle},
 };
 
@@ -20,6 +20,7 @@ pub struct State {
     pub window: Window,
     triangle: triangle::Triangle,
     pub pipelines: PipelineState,
+    pub movement: Movement,
     pub camera_state: CameraState,
 }
 
@@ -88,6 +89,7 @@ impl State {
         let triangle =
             triangle::Triangle::new(&device, &queue, &pipelines.bind_group_layouts.texture);
 
+        let movement = Movement::new(&device, &pipelines.bind_group_layouts.uniform);
         let camera_state = CameraState::new(&device, &config, &pipelines.bind_group_layouts.camera);
 
         Self {
@@ -99,12 +101,22 @@ impl State {
             window,
             triangle,
             pipelines,
+            movement,
             camera_state,
         }
     }
 
     pub fn update(&mut self) {
         self.update_camera();
+
+        self.movement
+            .uniform
+            .new_transform(&mut self.movement.transform);
+        self.queue.write_buffer(
+            &self.movement.buffer,
+            0,
+            bytemuck::cast_slice(&[self.movement.uniform]),
+        );
     }
 
     pub fn input(&mut self, event: &WindowEvent) -> bool {
@@ -158,6 +170,7 @@ impl State {
          */
         render_pass.set_pipeline(&self.pipelines.render_pipeline);
         render_pass.set_bind_group(1, &self.camera_state.bind_group, &[]);
+        render_pass.set_bind_group(2, &self.movement.bind_group, &[]);
         render_pass.draw_triangle_indexed(&self.triangle, 0..1);
 
         drop(render_pass);
