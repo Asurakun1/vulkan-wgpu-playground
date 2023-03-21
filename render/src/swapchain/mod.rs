@@ -2,7 +2,10 @@ use std::{path::PathBuf, time::Instant};
 use winit::{event::WindowEvent, window::Window};
 
 use crate::{
-    camera::{camera_state::CameraState, update_camera::UpdateCamera},
+    camera::{
+        camera_state::{self, CameraState},
+        update_camera::UpdateCamera,
+    },
     movement::{update_movement::UpdateMovement, Movement},
     texture::Texture,
     triangle::{self, draw_triangle::DrawTriangle},
@@ -14,7 +17,7 @@ mod bind_grp_layouts;
 mod render_pipelines;
 pub struct State {
     surface: wgpu::Surface,
-    device: wgpu::Device,
+    pub device: wgpu::Device,
     pub queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     pub size: winit::dpi::PhysicalSize<u32>,
@@ -22,9 +25,9 @@ pub struct State {
     triangle: triangle::Triangle,
     pub pipelines: PipelineState,
     pub movement: Movement,
-    pub camera_state: CameraState,
     pub depth_texture: Texture,
     pub start_time: Instant,
+    pub camera_state: CameraState,
 }
 
 impl State {
@@ -93,8 +96,8 @@ impl State {
             triangle::Triangle::new(&device, &queue, &pipelines.bind_group_layouts.texture);
 
         let movement = Movement::new(&device, &pipelines.bind_group_layouts.uniform);
-        let camera_state = CameraState::new(&device, &config, &pipelines.bind_group_layouts.camera);
         let depth_texture = Texture::create_depth_texture(&device, &config);
+        let camera_state = CameraState::new(&device, &config, &pipelines.bind_group_layouts.camera);
 
         let start_time = Instant::now();
 
@@ -108,15 +111,15 @@ impl State {
             triangle,
             pipelines,
             movement,
-            camera_state,
             depth_texture,
             start_time,
+            camera_state,
         }
     }
 
     pub fn update(&mut self) {
-        self.update_camera();
         self.update_movement();
+        self.update_camera();
     }
 
     pub fn input(&mut self, event: &WindowEvent) -> bool {
@@ -178,8 +181,11 @@ impl State {
          */
         render_pass.set_pipeline(&self.pipelines.render_pipeline);
         render_pass.set_bind_group(1, &self.camera_state.bind_group, &[]);
-        render_pass.set_bind_group(2, &self.movement.bind_group, &[]);
-        render_pass.draw_triangle_indexed(&self.triangle, 0..1);
+
+        {
+            render_pass.set_bind_group(2, &self.movement.bind_group, &[]);
+            render_pass.draw_triangle_indexed(&self.triangle, 0..1);
+        }
 
         drop(render_pass);
 

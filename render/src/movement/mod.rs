@@ -10,7 +10,7 @@ impl Transform {
         let rotation = cgmath::Deg(self.rotation_angle);
 
         let mut model: Matrix4<f32> = cgmath::Matrix4::identity();
-        let translation = cgmath::Vector3::new(rotation.cos(), rotation.sin(), 0.0);
+        let translation = cgmath::Vector3::new(rotation.sin(), rotation.sin(), rotation.sin());
         model = model * Matrix4::from_translation(translation);
 
         model = model * Matrix4::from_angle_x(rotation);
@@ -24,7 +24,7 @@ impl Transform {
     }
 
     pub fn update_rotation(&mut self, delta_time: f32) {
-        self.rotation_angle += delta_time * 45.0;
+        self.rotation_angle += delta_time * 180.0;
     }
 }
 

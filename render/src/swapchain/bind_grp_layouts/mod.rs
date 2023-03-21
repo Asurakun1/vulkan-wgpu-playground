@@ -7,7 +7,7 @@ pub struct BindGroupLayouts {
 impl BindGroupLayouts {
     pub fn new(device: &wgpu::Device) -> Self {
         let camera = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("camera bind group"),
+            label: Some("camera bind group layout"),
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
                 visibility: wgpu::ShaderStages::VERTEX,

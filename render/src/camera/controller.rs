@@ -7,8 +7,8 @@ pub struct Controller {
     speed: f32,
     is_forward_pressed: bool,
     is_backward_pressed: bool,
-    is_right_pressed: bool,
     is_left_pressed: bool,
+    is_right_pressed: bool,
 }
 
 impl Controller {
@@ -17,8 +17,8 @@ impl Controller {
             speed,
             is_forward_pressed: false,
             is_backward_pressed: false,
-            is_right_pressed: false,
             is_left_pressed: false,
+            is_right_pressed: false,
         }
     }
 
@@ -34,19 +34,23 @@ impl Controller {
                 ..
             } => {
                 let is_pressed = *state == ElementState::Pressed;
+
                 match keycode {
                     VirtualKeyCode::W | VirtualKeyCode::Up => {
                         self.is_forward_pressed = is_pressed;
                         true
                     }
+
                     VirtualKeyCode::S | VirtualKeyCode::Down => {
                         self.is_backward_pressed = is_pressed;
                         true
                     }
+
                     VirtualKeyCode::A | VirtualKeyCode::Left => {
                         self.is_left_pressed = is_pressed;
                         true
                     }
+
                     VirtualKeyCode::D | VirtualKeyCode::Right => {
                         self.is_right_pressed = is_pressed;
                         true

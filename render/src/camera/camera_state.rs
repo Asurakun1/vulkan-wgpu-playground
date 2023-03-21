@@ -1,13 +1,14 @@
-use wgpu::{util::DeviceExt, BufferUsages, SurfaceConfiguration};
+use image::buffer;
+use wgpu::{util::DeviceExt, Buffer, BufferUsages, SurfaceConfiguration};
 
-use super::{controller, Camera, Uniform};
+use super::{controller::Controller, Camera, CameraUniform};
 
 pub struct CameraState {
     pub camera: Camera,
-    pub uniform: Uniform,
+    pub uniform: CameraUniform,
     pub buffer: wgpu::Buffer,
     pub bind_group: wgpu::BindGroup,
-    pub controller: controller::Controller,
+    pub controller: Controller,
 }
 
 impl CameraState {
@@ -21,12 +22,12 @@ impl CameraState {
             target: (0.0, 0.0, 0.0).into(),
             up: cgmath::Vector3::unit_y(),
             aspect: config.width as f32 / config.height as f32,
-            fovy: 90.0,
+            fovy: 45.0,
             znear: 0.1,
             zfar: 100.0,
         };
 
-        let mut uniform = Uniform::new();
+        let mut uniform = CameraUniform::new();
         uniform.update_view_proj(&camera);
 
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -43,7 +44,8 @@ impl CameraState {
                 resource: buffer.as_entire_binding(),
             }],
         });
-        let controller = controller::Controller::new(0.1);
+
+        let controller = Controller::new(0.1);
 
         Self {
             camera,

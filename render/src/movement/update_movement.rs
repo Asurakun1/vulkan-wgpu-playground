@@ -12,6 +12,7 @@ impl UpdateMovement for State {
         self.movement
             .uniform
             .new_transform(&self.movement.transform);
+
         self.queue.write_buffer(
             &self.movement.buffer,
             0,

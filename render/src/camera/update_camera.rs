@@ -1,4 +1,8 @@
+use wgpu::util::DeviceExt;
+
 use crate::swapchain::State;
+
+use super::CameraUniform;
 
 pub trait UpdateCamera {
     fn update_camera(&mut self);
@@ -14,10 +18,27 @@ impl UpdateCamera for State {
             .uniform
             .update_view_proj(&self.camera_state.camera);
 
-        self.queue.write_buffer(
+        let staging_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("camera staging buffer"),
+                contents: bytemuck::cast_slice(&[self.camera_state.uniform]),
+                usage: wgpu::BufferUsages::COPY_SRC,
+            });
+
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("camera encoder"),
+            });
+
+        encoder.copy_buffer_to_buffer(
+            &staging_buffer,
+            0,
             &self.camera_state.buffer,
             0,
-            bytemuck::cast_slice(&[self.camera_state.uniform]),
+            std::mem::size_of::<CameraUniform>() as wgpu::BufferAddress,
         );
+        self.queue.submit(std::iter::once(encoder.finish()));
     }
 }
