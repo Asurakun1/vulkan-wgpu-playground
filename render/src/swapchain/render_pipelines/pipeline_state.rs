@@ -1,6 +1,8 @@
 use wgpu::TextureFormat;
 
-use crate::{swapchain::bind_grp_layouts::BindGroupLayouts, triangle::vertex::Vertex};
+use crate::{
+    instance::InstanceRaw, swapchain::bind_grp_layouts::BindGroupLayouts, triangle::vertex::Vertex,
+};
 
 use super::create_render_pipeline;
 
@@ -44,7 +46,7 @@ impl PipelineState {
                 format,
                 Some(&render_pipeline_layout),
                 &shader,
-                &[Vertex::desc()],
+                &[Vertex::desc(), InstanceRaw::desc()],
                 depth_format,
             )
         };

@@ -1,4 +1,4 @@
-use wgpu::util::DeviceExt;
+use wgpu::{util::DeviceExt, BufferUsages};
 
 use crate::swapchain::State;
 
@@ -21,15 +21,15 @@ impl UpdateCamera for State {
         let staging_buffer = self
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("camera staging buffer"),
+                label: Some("staging buffer for camera"),
                 contents: bytemuck::cast_slice(&[self.camera_state.uniform]),
-                usage: wgpu::BufferUsages::COPY_SRC,
+                usage: BufferUsages::COPY_SRC,
             });
 
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("camera encoder"),
+                label: Some("encoder"),
             });
 
         encoder.copy_buffer_to_buffer(
@@ -39,6 +39,7 @@ impl UpdateCamera for State {
             0,
             std::mem::size_of::<CameraUniform>() as wgpu::BufferAddress,
         );
+
         self.queue.submit(std::iter::once(encoder.finish()));
     }
 }

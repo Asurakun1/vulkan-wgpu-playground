@@ -1,5 +1,4 @@
-use image::buffer;
-use wgpu::{util::DeviceExt, Buffer, BufferUsages, SurfaceConfiguration};
+use wgpu::{util::DeviceExt, BufferUsages, SurfaceConfiguration};
 
 use super::{controller::Controller, Camera, CameraUniform};
 
@@ -18,11 +17,11 @@ impl CameraState {
         layout: &wgpu::BindGroupLayout,
     ) -> Self {
         let camera = Camera {
-            eye: (0.0, 1.0, 2.0).into(),
+            eye: (0.0, 3.0, 4.0).into(),
             target: (0.0, 0.0, 0.0).into(),
             up: cgmath::Vector3::unit_y(),
             aspect: config.width as f32 / config.height as f32,
-            fovy: 45.0,
+            fovy: 90.0,
             znear: 0.1,
             zfar: 100.0,
         };

@@ -2,10 +2,8 @@ use std::{path::PathBuf, time::Instant};
 use winit::{event::WindowEvent, window::Window};
 
 use crate::{
-    camera::{
-        camera_state::{self, CameraState},
-        update_camera::UpdateCamera,
-    },
+    camera::{camera_state::CameraState, update_camera::UpdateCamera},
+    instance,
     movement::{update_movement::UpdateMovement, Movement},
     texture::Texture,
     triangle::{self, draw_triangle::DrawTriangle},
@@ -28,6 +26,7 @@ pub struct State {
     pub depth_texture: Texture,
     pub start_time: Instant,
     pub camera_state: CameraState,
+    pub instance_state: instance::state::State,
 }
 
 impl State {
@@ -95,11 +94,11 @@ impl State {
         let triangle =
             triangle::Triangle::new(&device, &queue, &pipelines.bind_group_layouts.texture);
 
+        let camera_state = CameraState::new(&device, &config, &pipelines.bind_group_layouts.camera);
         let movement = Movement::new(&device, &pipelines.bind_group_layouts.uniform);
         let depth_texture = Texture::create_depth_texture(&device, &config);
-        let camera_state = CameraState::new(&device, &config, &pipelines.bind_group_layouts.camera);
-
         let start_time = Instant::now();
+        let instance_state = instance::state::State::new(&device);
 
         Self {
             surface,
@@ -114,12 +113,13 @@ impl State {
             depth_texture,
             start_time,
             camera_state,
+            instance_state,
         }
     }
 
     pub fn update(&mut self) {
-        self.update_movement();
         self.update_camera();
+        self.update_movement();
     }
 
     pub fn input(&mut self, event: &WindowEvent) -> bool {
@@ -181,11 +181,12 @@ impl State {
          */
         render_pass.set_pipeline(&self.pipelines.render_pipeline);
         render_pass.set_bind_group(1, &self.camera_state.bind_group, &[]);
-
-        {
-            render_pass.set_bind_group(2, &self.movement.bind_group, &[]);
-            render_pass.draw_triangle_indexed(&self.triangle, 0..1);
-        }
+        render_pass.set_bind_group(2, &self.movement.bind_group, &[]);
+        render_pass.set_vertex_buffer(1, self.instance_state.instance_buffer.slice(..));
+        render_pass.draw_triangle_indexed(
+            &self.triangle,
+            0..self.instance_state.instances.len() as u32,
+        );
 
         drop(render_pass);
 

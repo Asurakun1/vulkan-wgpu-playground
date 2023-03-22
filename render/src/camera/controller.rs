@@ -59,7 +59,6 @@ impl Controller {
                     _ => false,
                 }
             }
-
             _ => false,
         }
     }
@@ -70,15 +69,14 @@ impl Controller {
         let forward_mag = forward.magnitude();
 
         if self.is_forward_pressed && forward_mag > self.speed {
-            camera.eye += forward_norm * self.speed;
+            camera.eye = camera.eye + forward_norm * self.speed;
         }
 
         if self.is_backward_pressed {
-            camera.eye -= forward_norm * self.speed;
+            camera.eye = camera.eye - forward_norm * self.speed;
         }
 
         let right = forward_norm.cross(camera.up);
-
         let forward = camera.target - camera.eye;
         let forward_mag = forward.magnitude();
 
