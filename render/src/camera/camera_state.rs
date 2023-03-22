@@ -17,7 +17,7 @@ impl CameraState {
         layout: &wgpu::BindGroupLayout,
     ) -> Self {
         let camera = Camera {
-            eye: (0.0, 3.0, 4.0).into(),
+            eye: (0.0, 2.0, 4.0).into(),
             target: (0.0, 0.0, 0.0).into(),
             up: cgmath::Vector3::unit_y(),
             aspect: config.width as f32 / config.height as f32,

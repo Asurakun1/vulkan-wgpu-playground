@@ -9,26 +9,21 @@ pub struct State {
 
 impl State {
     const NUM_INSTANCES_PER_ROW: u32 = 10;
-    const INSTANCE_DISPLACEMENT: cgmath::Vector3<f32> = cgmath::Vector3::new(
-        Self::NUM_INSTANCES_PER_ROW as f32 * 0.5,
-        Self::NUM_INSTANCES_PER_ROW as f32 * 0.5,
-        Self::NUM_INSTANCES_PER_ROW as f32 * 0.5,
-    );
-    const SPACE_BETWEEN: f32 = 0.4;
+    const SPACE_BETWEEN: f32 = 1.4;
 
     pub fn new(device: &wgpu::Device) -> Self {
         let instances = (0..Self::NUM_INSTANCES_PER_ROW)
-            .flat_map(|x| {
+            .flat_map(|z| {
                 (0..Self::NUM_INSTANCES_PER_ROW).flat_map(move |y| {
-                    (0..Self::NUM_INSTANCES_PER_ROW).map(move |z| {
-                        let x = Self::SPACE_BETWEEN
-                            * (x as f32 * Self::NUM_INSTANCES_PER_ROW as f32 / 2.0);
+                    (0..Self::NUM_INSTANCES_PER_ROW).map(move |x| {
                         let y = Self::SPACE_BETWEEN
-                            * (y as f32 * Self::NUM_INSTANCES_PER_ROW as f32 / 2.0);
+                            * (y as f32 - Self::NUM_INSTANCES_PER_ROW as f32 / 2.0);
+                        let x = Self::SPACE_BETWEEN
+                            * (x as f32 - Self::NUM_INSTANCES_PER_ROW as f32 / 2.0);
                         let z = Self::SPACE_BETWEEN
-                            * (z as f32 * Self::NUM_INSTANCES_PER_ROW as f32 / 2.0);
+                            * (z as f32 - Self::NUM_INSTANCES_PER_ROW as f32 / 2.0);
 
-                        let position = cgmath::Vector3 { x, y, z } - Self::INSTANCE_DISPLACEMENT;
+                        let position = cgmath::Vector3 { x, y: 0.0, z };
 
                         let rotation = if position.is_zero() {
                             cgmath::Quaternion::from_axis_angle(
